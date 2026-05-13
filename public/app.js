@@ -19,89 +19,121 @@ document.querySelectorAll('.tab').forEach((button) => {
   });
 });
 
-document.getElementById('refreshAll').addEventListener('click', loadAll);
-document.getElementById('applyFilters').addEventListener('click', loadImoveis);
-document.getElementById('runQueries').addEventListener('click', runQueries);
+const refreshButton = document.getElementById('refreshAll');
+let currentRefresh = Promise.resolve();
+
+refreshButton.addEventListener('click', () => {
+  currentRefresh = handleAction(refreshData);
+});
+document.getElementById('applyFilters').addEventListener('click', () => handleAction(loadImoveis));
+document.getElementById('runQueries').addEventListener('click', () => handleAction(runQueries));
 
 document.getElementById('clienteForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const tipo = form.getAll('tipo');
-  await api('/api/clientes', {
-    method: 'POST',
-    body: {
-      nome: form.get('nome'),
-      endereco: form.get('endereco'),
-      telefone: form.get('telefone'),
-      email: form.get('email'),
-      tipo
-    }
+  await handleAction(async () => {
+    const form = new FormData(event.currentTarget);
+    const tipo = form.getAll('tipo');
+    const novoCliente = await api('/api/clientes', {
+      method: 'POST',
+      body: {
+        nome: form.get('nome'),
+        endereco: form.get('endereco'),
+        telefone: form.get('telefone'),
+        email: form.get('email'),
+        tipo
+      }
+    });
+    upsertCliente(novoCliente);
+    populateClienteSelects();
+    event.currentTarget.reset();
+    await clickRefreshButton();
   });
-  event.currentTarget.reset();
-  await loadAll();
 });
 
 document.getElementById('interesseForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  await api(`/api/clientes/${form.get('cliente_id')}/interesses`, {
-    method: 'POST',
-    body: {
-      quartos: Number(form.get('quartos')),
-      tamanho_min_m2: Number(form.get('tamanho_min_m2')),
-      area_lazer: form.get('area_lazer') === 'on',
-      bairro: form.get('bairro'),
-      cidade: form.get('cidade'),
-      uf: form.get('uf'),
-      valor_maximo: Number(form.get('valor_maximo'))
-    }
+  await handleAction(async () => {
+    const form = new FormData(event.currentTarget);
+    await api(`/api/clientes/${form.get('cliente_id')}/interesses`, {
+      method: 'POST',
+      body: {
+        quartos: Number(form.get('quartos')),
+        tamanho_min_m2: Number(form.get('tamanho_min_m2')),
+        area_lazer: form.get('area_lazer') === 'on',
+        bairro: form.get('bairro'),
+        cidade: form.get('cidade'),
+        uf: form.get('uf'),
+        valor_maximo: Number(form.get('valor_maximo'))
+      }
+    });
+    event.currentTarget.reset();
+    await clickRefreshButton();
   });
-  event.currentTarget.reset();
-  await loadAll();
 });
 
 document.getElementById('imovelForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  await api('/api/imoveis', {
-    method: 'POST',
-    body: {
-      tipo: form.get('tipo'),
-      endereco: {
-        logradouro: form.get('logradouro'),
-        numero: form.get('numero'),
-        bairro: form.get('bairro'),
-        cidade: form.get('cidade'),
-        uf: form.get('uf')
-      },
-      preco: Number(form.get('preco')),
-      data_construcao: form.get('data_construcao'),
-      ocupado: form.get('ocupado') === 'on',
-      dono_id: form.get('dono_id')
-    }
+  await handleAction(async () => {
+    const form = new FormData(event.currentTarget);
+    await api('/api/imoveis', {
+      method: 'POST',
+      body: {
+        tipo: form.get('tipo'),
+        endereco: {
+          logradouro: form.get('logradouro'),
+          numero: form.get('numero'),
+          bairro: form.get('bairro'),
+          cidade: form.get('cidade'),
+          uf: form.get('uf')
+        },
+        preco: Number(form.get('preco')),
+        data_construcao: form.get('data_construcao'),
+        ocupado: form.get('ocupado') === 'on',
+        dono_id: form.get('dono_id')
+      }
+    });
+    event.currentTarget.reset();
+    await clickRefreshButton();
   });
-  event.currentTarget.reset();
-  await loadAll();
 });
 
 document.getElementById('visitaForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  await api('/api/visitas', {
-    method: 'POST',
-    body: {
-      cliente_id: form.get('cliente_id'),
-      imovel_id: form.get('imovel_id'),
-      data_hora: form.get('data_hora'),
-      observacao: form.get('observacao')
-    }
+  await handleAction(async () => {
+    const form = new FormData(event.currentTarget);
+    await api('/api/visitas', {
+      method: 'POST',
+      body: {
+        cliente_id: form.get('cliente_id'),
+        imovel_id: form.get('imovel_id'),
+        data_hora: form.get('data_hora'),
+        observacao: form.get('observacao')
+      }
+    });
+    event.currentTarget.reset();
+    await clickRefreshButton();
   });
-  event.currentTarget.reset();
-  await loadAll();
 });
+
+async function clickRefreshButton() {
+  refreshButton.click();
+  await currentRefresh;
+}
+
+async function refreshData() {
+  refreshButton.disabled = true;
+  refreshButton.textContent = 'Atualizando...';
+  try {
+    await loadAll();
+  } finally {
+    refreshButton.disabled = false;
+    refreshButton.textContent = 'Atualizar dados';
+  }
+}
 
 async function loadAll() {
   await loadClientes();
+  populateClienteSelects();
   await loadImoveis();
   await loadVisitas();
   populateSelects();
@@ -176,18 +208,45 @@ async function loadVisitas() {
 }
 
 function populateSelects() {
-  const vendedores = state.clientes.filter((cliente) => cliente.tipo.includes('vendedor'));
-  const compradores = state.clientes.filter((cliente) => cliente.tipo.includes('comprador'));
-
-  fillSelect(document.querySelector('#imovelForm select[name="dono_id"]'), vendedores, 'Selecione vendedor');
-  fillSelect(document.querySelector('#interesseForm select[name="cliente_id"]'), compradores, 'Selecione comprador');
-  fillSelect(document.querySelector('#visitaForm select[name="cliente_id"]'), compradores, 'Selecione comprador');
+  populateClienteSelects();
   fillSelect(
     document.querySelector('#visitaForm select[name="imovel_id"]'),
     state.imoveis,
     'Selecione imovel',
     (imovel) => `${imovel.tipo} - ${imovel.endereco.bairro} - ${money(imovel.preco)}`
   );
+}
+
+function populateClienteSelects() {
+  const vendedores = state.clientes.filter((cliente) => hasTipo(cliente, 'vendedor'));
+  const compradores = state.clientes.filter((cliente) => hasTipo(cliente, 'comprador'));
+
+  fillSelect(document.querySelector('#imovelForm select[name="dono_id"]'), vendedores, 'Selecione vendedor');
+  fillSelect(document.querySelector('#interesseForm select[name="cliente_id"]'), compradores, 'Selecione comprador');
+  fillSelect(document.querySelector('#visitaForm select[name="cliente_id"]'), compradores, 'Selecione comprador');
+}
+
+function upsertCliente(cliente) {
+  const index = state.clientes.findIndex((item) => item._id === cliente._id);
+  if (index >= 0) {
+    state.clientes[index] = cliente;
+  } else {
+    state.clientes.push(cliente);
+    state.clientes.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+}
+
+function hasTipo(cliente, tipo) {
+  const tipos = Array.isArray(cliente.tipo) ? cliente.tipo : [cliente.tipo];
+  return tipos.includes(tipo);
+}
+
+async function handleAction(action) {
+  try {
+    await action();
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function fillSelect(select, items, placeholder, label = (item) => item.nome) {
@@ -240,12 +299,13 @@ function renderItem({ title, lines, onDelete }) {
 
 async function remove(endpoint, id) {
   await api(`${endpoint}/${id}`, { method: 'DELETE' });
-  await loadAll();
+  await clickRefreshButton();
 }
 
 async function api(url, options = {}) {
   const response = await fetch(url, {
     method: options.method || 'GET',
+    cache: 'no-store',
     headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined
   });
@@ -274,4 +334,4 @@ function escapeHtml(value) {
   })[char]);
 }
 
-loadAll();
+handleAction(refreshData);

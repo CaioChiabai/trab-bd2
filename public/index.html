@@ -46,7 +46,7 @@
           <input name="cidade" placeholder="Cidade" required>
           <input name="uf" maxlength="2" placeholder="UF" required>
           <input name="valor_maximo" type="number" min="1" placeholder="Valor maximo" required>
-          <button type="submit">Adicionar interesse</button>
+          <button class="primary" type="submit">Adicionar interesse</button>
         </form>
         <div id="clientesList" class="list"></div>
       </section>
@@ -75,7 +75,7 @@
           <input id="filterBairro" placeholder="Filtrar bairro">
           <input id="filterPrecoMax" type="number" placeholder="Preco maximo">
           <label class="check"><input id="filterDisponiveis" type="checkbox"> Disponiveis</label>
-          <button id="applyFilters" type="button">Filtrar</button>
+          <button id="applyFilters" class="primary" type="button">Filtrar</button>
         </div>
         <div id="imoveisList" class="list"></div>
       </section>
@@ -111,6 +111,6 @@
       </article>
     </template>
 
-    <script src="/app.js" type="module"></script>
+    <script src="/app.js?v=20260513-2" type="module"></script>
   </body>
 </html>
