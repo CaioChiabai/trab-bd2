@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { asyncRoute } from '../async-route.js';
 import { collections, toObjectId } from '../db.js';
 import { normalizeVisita } from '../validation.js';
 
@@ -6,18 +7,18 @@ export function visitasRouter(db) {
   const router = Router();
   const { clientes, imoveis, visitas } = collections(db);
 
-  router.get('/', async (_req, res) => {
+  router.get('/', asyncRoute(async (_req, res) => {
     const data = await visitas.find().sort({ data_hora: -1 }).toArray();
     res.json(data);
-  });
+  }));
 
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', asyncRoute(async (req, res) => {
     const visita = await visitas.findOne({ _id: toObjectId(req.params.id) });
     if (!visita) return res.status(404).json({ error: 'Visita nao encontrada' });
     res.json(visita);
-  });
+  }));
 
-  router.post('/', async (req, res) => {
+  router.post('/', asyncRoute(async (req, res) => {
     const visita = normalizeVisita(req.body);
     visita.imovel_id = toObjectId(visita.imovel_id, 'imovel_id');
     visita.cliente_id = toObjectId(visita.cliente_id, 'cliente_id');
@@ -25,9 +26,9 @@ export function visitasRouter(db) {
 
     const result = await visitas.insertOne(visita);
     res.status(201).json({ ...visita, _id: result.insertedId });
-  });
+  }));
 
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', asyncRoute(async (req, res) => {
     const id = toObjectId(req.params.id);
     const visita = normalizeVisita(req.body, true);
     if (visita.imovel_id) visita.imovel_id = toObjectId(visita.imovel_id, 'imovel_id');
@@ -41,13 +42,13 @@ export function visitasRouter(db) {
     );
     if (!result) return res.status(404).json({ error: 'Visita nao encontrada' });
     res.json(result);
-  });
+  }));
 
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', asyncRoute(async (req, res) => {
     const result = await visitas.deleteOne({ _id: toObjectId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Visita nao encontrada' });
     res.status(204).send();
-  });
+  }));
 
   return router;
 }

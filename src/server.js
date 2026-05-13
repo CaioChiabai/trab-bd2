@@ -26,7 +26,13 @@ app.use('/api/consultas', consultasRouter(db));
 
 app.use((err, _req, res, _next) => {
   if (err.code === 11000) {
-    return res.status(409).json({ error: 'Registro duplicado', details: err.keyValue });
+    const duplicatedField = Object.keys(err.keyValue || {})[0];
+    const duplicatedValue = err.keyValue?.[duplicatedField];
+    const message = duplicatedField
+      ? `Ja existe um registro com ${duplicatedField}: ${duplicatedValue}`
+      : 'Registro duplicado';
+
+    return res.status(409).json({ error: message, details: err.keyValue });
   }
 
   const status = err.status || 500;
