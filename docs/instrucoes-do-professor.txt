@@ -1,0 +1,20 @@
+Olá, alunos(as). Nesse tópico do curso cada grupo vai desenvolver um CRUD utilizando a linguagem de programação que você quiser, ou ainda, desenvolver com low code ou no code, tendo como repositório o SGBD MongodBD. Desenvolver algumas consultas que utilizem os comandos find, aggregate e funções agregadas, e funções estudadas na disciplina. Quando for utilizar IA, documentar todos os prompts utilizados, qual IA utilizou e os resultados obtidos. Cada grupo terá um estudo de caso para desenvolver.
+
+Grupo 1 - EMPRESA DE IMÓVEIS
+Uma empresa de compra e vende de imóveis pretende informatizar os seus serviços. A
+empresa tem vários imóveis para venda, podendo ser casa, loja, apartamento, garagem,
+etc..., cada um pertencente a um cliente da empresa. Do imóvel a empresa quer ter
+disponível o endereço, o preço, data de construção e um indicativo se está ou não ocupado.
+Dos clientes deve ser armazenado o seu nome, endereço, número de telefone, e-mail. Um
+mesmo cliente pode ter vários imóveis para venda na empresa. Nesses casos, não se quer
+repetir a informação do endereço, número de telefone e e-mail do cliente. Há ainda os
+clientes da empresa que, em vez de quererem vender imóveis, querem comprar. Desses
+deve ser armazenado, para além da informação que se guarda dos outros clientes, a
+informação acerca dos interesses do cliente. Dos interesses faz parte as características do
+imóvel (1 quarto, 2 quartos, tamanho em metros quadrados, indicativo se tem ou não área
+de lazer, etc..), endereço (nesse caso, somente o bairro, cidade e UF de interesse) que
+pretendem comprar e maior valor que está disposto a pagar pelo imóvel. Um cliente pode
+ter interesse por vários imóveis diferentes. De cada imóvel que esteja para venda na
+empresa, deve ainda ser armazenada a informação de quais clientes já o visitaram, e
+quando (data e hora). Pode acontecer de o cliente visitar um mesmo imóvel que esteja
+interessado mais de uma vez

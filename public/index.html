@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Empresa de Imoveis - CRUD MongoDB</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Empresa de Imoveis</h1>
+        <p>CRUD MongoDB para clientes, imoveis, visitas e consultas agregadas.</p>
+      </div>
+      <button id="refreshAll" class="primary">Atualizar dados</button>
+    </header>
+
+    <main class="layout">
+      <nav class="tabs" aria-label="Secoes do sistema">
+        <button class="tab active" data-tab="clientes">Clientes</button>
+        <button class="tab" data-tab="imoveis">Imoveis</button>
+        <button class="tab" data-tab="visitas">Visitas</button>
+        <button class="tab" data-tab="consultas">Consultas</button>
+      </nav>
+
+      <section id="clientes" class="panel active">
+        <div class="section-head">
+          <h2>Clientes</h2>
+          <span id="clientesCount" class="counter">0</span>
+        </div>
+        <form id="clienteForm" class="form-grid">
+          <input name="nome" placeholder="Nome" required>
+          <input name="endereco" placeholder="Endereco completo" required>
+          <input name="telefone" placeholder="Telefone" required>
+          <input name="email" type="email" placeholder="E-mail" required>
+          <label class="check"><input type="checkbox" name="tipo" value="vendedor"> Vendedor</label>
+          <label class="check"><input type="checkbox" name="tipo" value="comprador"> Comprador</label>
+          <button class="primary" type="submit">Salvar cliente</button>
+        </form>
+        <form id="interesseForm" class="form-grid compact">
+          <select name="cliente_id" required></select>
+          <input name="quartos" type="number" min="0" placeholder="Quartos" required>
+          <input name="tamanho_min_m2" type="number" min="1" placeholder="Tamanho minimo m2" required>
+          <label class="check"><input type="checkbox" name="area_lazer"> Area de lazer</label>
+          <input name="bairro" placeholder="Bairro" required>
+          <input name="cidade" placeholder="Cidade" required>
+          <input name="uf" maxlength="2" placeholder="UF" required>
+          <input name="valor_maximo" type="number" min="1" placeholder="Valor maximo" required>
+          <button type="submit">Adicionar interesse</button>
+        </form>
+        <div id="clientesList" class="list"></div>
+      </section>
+
+      <section id="imoveis" class="panel">
+        <div class="section-head">
+          <h2>Imoveis</h2>
+          <span id="imoveisCount" class="counter">0</span>
+        </div>
+        <form id="imovelForm" class="form-grid">
+          <input name="tipo" placeholder="Tipo: casa, apartamento, loja..." required>
+          <input name="logradouro" placeholder="Logradouro" required>
+          <input name="numero" placeholder="Numero" required>
+          <input name="bairro" placeholder="Bairro" required>
+          <input name="cidade" placeholder="Cidade" required>
+          <input name="uf" maxlength="2" placeholder="UF" required>
+          <input name="preco" type="number" min="1" placeholder="Preco" required>
+          <input name="data_construcao" type="date" required>
+          <label class="check"><input type="checkbox" name="ocupado"> Ocupado</label>
+          <select name="dono_id" required></select>
+          <button class="primary" type="submit">Salvar imovel</button>
+        </form>
+        <div class="filters">
+          <input id="filterTipo" placeholder="Filtrar tipo">
+          <input id="filterCidade" placeholder="Filtrar cidade">
+          <input id="filterBairro" placeholder="Filtrar bairro">
+          <input id="filterPrecoMax" type="number" placeholder="Preco maximo">
+          <label class="check"><input id="filterDisponiveis" type="checkbox"> Disponiveis</label>
+          <button id="applyFilters" type="button">Filtrar</button>
+        </div>
+        <div id="imoveisList" class="list"></div>
+      </section>
+
+      <section id="visitas" class="panel">
+        <div class="section-head">
+          <h2>Visitas</h2>
+          <span id="visitasCount" class="counter">0</span>
+        </div>
+        <form id="visitaForm" class="form-grid">
+          <select name="cliente_id" required></select>
+          <select name="imovel_id" required></select>
+          <input name="data_hora" type="datetime-local" required>
+          <input name="observacao" placeholder="Observacao">
+          <button class="primary" type="submit">Registrar visita</button>
+        </form>
+        <div id="visitasList" class="list"></div>
+      </section>
+
+      <section id="consultas" class="panel">
+        <div class="section-head">
+          <h2>Consultas</h2>
+          <button id="runQueries" class="primary" type="button">Executar consultas</button>
+        </div>
+        <div id="queriesOutput" class="queries"></div>
+      </section>
+    </main>
+
+    <template id="itemTemplate">
+      <article class="item">
+        <div class="item-body"></div>
+        <div class="item-actions"></div>
+      </article>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
