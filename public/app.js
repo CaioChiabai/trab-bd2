@@ -33,7 +33,7 @@ document.getElementById('clienteForm').addEventListener('submit', async (event) 
   await handleAction(async () => {
     const form = new FormData(event.currentTarget);
     const tipo = form.getAll('tipo');
-    const novoCliente = await api('/api/clientes', {
+    await api('/api/clientes', {
       method: 'POST',
       body: {
         nome: form.get('nome'),
@@ -43,10 +43,8 @@ document.getElementById('clienteForm').addEventListener('submit', async (event) 
         tipo
       }
     });
-    upsertCliente(novoCliente);
-    populateClienteSelects();
     event.currentTarget.reset();
-    await clickRefreshButton();
+    await refreshData();
   });
 });
 
@@ -67,7 +65,7 @@ document.getElementById('interesseForm').addEventListener('submit', async (event
       }
     });
     event.currentTarget.reset();
-    await clickRefreshButton();
+    await refreshData();
   });
 });
 
@@ -93,7 +91,7 @@ document.getElementById('imovelForm').addEventListener('submit', async (event) =
       }
     });
     event.currentTarget.reset();
-    await clickRefreshButton();
+    await refreshData();
   });
 });
 
@@ -111,7 +109,7 @@ document.getElementById('visitaForm').addEventListener('submit', async (event) =
       }
     });
     event.currentTarget.reset();
-    await clickRefreshButton();
+    await refreshData();
   });
 });
 
@@ -299,7 +297,7 @@ function renderItem({ title, lines, onDelete }) {
 
 async function remove(endpoint, id) {
   await api(`${endpoint}/${id}`, { method: 'DELETE' });
-  await clickRefreshButton();
+  await refreshData();
 }
 
 async function api(url, options = {}) {
