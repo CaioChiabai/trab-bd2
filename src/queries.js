@@ -1,28 +1,25 @@
 export function buildImoveisFindQuery(params = {}) {
   const query = {};
 
-  if (params.disponiveis === 'true') {
-    query.ocupado = false;
-  }
-  if (params.ocupado !== undefined) {
-    query.ocupado = params.ocupado === 'true';
-  }
-  if (params.tipo) {
-    query.tipo = String(params.tipo).toLowerCase();
-  }
-  if (params.cidade) {
-    query['endereco.cidade'] = new RegExp(escapeRegExp(params.cidade), 'i');
-  }
-  if (params.bairro) {
-    query['endereco.bairro'] = new RegExp(escapeRegExp(params.bairro), 'i');
-  }
-  if (params.uf) {
-    query['endereco.uf'] = String(params.uf).toUpperCase();
-  }
+  if (params.disponiveis === 'true') query.ocupado = false;
+  if (params.tipo) query.tipo = String(params.tipo).toLowerCase();
+  
+  // Utilizando regex para buscas parciais sem case sensitivity
+  if (params.cidade) query['endereco.cidade'] = new RegExp(escapeRegExp(params.cidade), 'i');
+  if (params.bairro) query['endereco.bairro'] = new RegExp(escapeRegExp(params.bairro), 'i');
+  
+  // Range de Preços
   if (params.preco_min || params.preco_max) {
     query.preco = {};
     if (params.preco_min) query.preco.$gte = Number(params.preco_min);
     if (params.preco_max) query.preco.$lte = Number(params.preco_max);
+  }
+
+  // Novo: Range de Datas (Construção)
+  if (params.data_inicio || params.data_fim) {
+    query.data_construcao = {};
+    if (params.data_inicio) query.data_construcao.$gte = params.data_inicio;
+    if (params.data_fim) query.data_construcao.$lte = params.data_fim;
   }
 
   return query;

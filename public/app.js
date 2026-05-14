@@ -263,26 +263,92 @@ function fillSelect(select, items, placeholder, label = (item) => item.nome) {
 
 async function runQueries() {
   const queries = [
-    ['find: imoveis disponiveis', '/api/consultas/find/imoveis-disponiveis'],
-    ['find: compradores com interesses', '/api/consultas/find/compradores-com-interesses'],
-    ['aggregate: imoveis por tipo', '/api/consultas/aggregate/imoveis-por-tipo'],
-    ['aggregate: preco medio por localidade', '/api/consultas/aggregate/preco-medio-localidade'],
-    ['aggregate: imoveis com vendedor', '/api/consultas/aggregate/imoveis-com-vendedor'],
-    ['aggregate: visitas com cliente e imovel', '/api/consultas/aggregate/visitas-com-cliente-imovel'],
-    ['funcoes agregadas: menor e maior preco', '/api/consultas/aggregate/preco-min-max'],
-    ['funcoes agregadas: visitas por imovel', '/api/consultas/aggregate/visitas-por-imovel'],
-    ['funcoes agregadas: imoveis por vendedor', '/api/consultas/aggregate/imoveis-por-vendedor']
+    ['Aggregate: Preço Médio por Localidade', '/api/consultas/aggregate/preco-medio-localidade'],
+    ['Aggregate: Imóveis por Tipo', '/api/consultas/aggregate/imoveis-por-tipo'],
+    ['Aggregate: Visitas por Imóvel', '/api/consultas/aggregate/visitas-por-imovel']
+    // ... adicione as outras consultas aqui
   ];
 
   const output = document.getElementById('queriesOutput');
-  output.innerHTML = '';
+  output.innerHTML = ''; // Limpa a tela de consultas anteriores
+
   for (const [title, url] of queries) {
-    const data = await api(url);
     const block = document.createElement('section');
     block.className = 'query-block';
-    block.innerHTML = `<h3>${title}</h3><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+    // Estado de Loading (UX)
+    block.innerHTML = `<h3>${escapeHtml(title)}</h3><p class="text-muted">Carregando dados...</p>`;
     output.appendChild(block);
+
+    try {
+      const data = await api(url);
+      
+      // Estado Vazio (Error Handling visual)
+      if (!data || data.length === 0) {
+        block.innerHTML = `<h3>${escapeHtml(title)}</h3>
+          <div class="empty-state">
+            <p>Nenhum resultado encontrado para esta consulta.</p>
+          </div>`;
+        continue;
+      }
+
+      // Renderiza uma tabela dinâmica
+      block.innerHTML = `<h3>${escapeHtml(title)}</h3>`;
+      block.appendChild(renderGenericTable(data));
+
+    } catch (error) {
+      // Estado de Erro / Falha de Conexão
+      block.innerHTML = `<h3>${escapeHtml(title)}</h3>
+        <div class="error-state" style="color: var(--danger-color); border: 1px solid var(--danger-color); padding: 1rem; border-radius: 4px;">
+          <p>⚠️ Falha ao carregar: ${escapeHtml(`error.message`)}</p>
+        </div>`;
+    }
   }
+}
+
+/**
+ * Função Factory para renderizar tabelas HTML a partir de qualquer Array de Objetos JSON.
+ * Mantém o padrão de UI e simplifica a manutenção.
+ */
+function renderGenericTable(data) {
+  const table = document.createElement('table');
+  table.className = 'data-table'; // Sugiro adicionar estilos de border-collapse e padding no CSS
+  table.style.width = '100%';
+  
+  // Extrai cabeçalhos da primeira linha (achatando objetos aninhados se houver)
+  const headers = Object.keys(data[0]);
+  
+  const thead = document.createElement('thead');
+  thead.innerHTML = `<tr>${`headers.map`(h => `<th>${escapeHtml(h.toUpperCase())}</th>`).join('')}</tr>`;
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = headers.map(key => {
+      let val = row[key];
+      
+      // Interface de Dados: Badges e Formatação
+      if (typeof val === 'boolean') {
+        return `<td><span class="badge ${val ? 'bg-success' : 'bg-danger'}">${val ? 'Sim' : 'Não'}</span></td>`;
+      }
+      
+      if (typeof val === 'object' && val !== null) {
+        // Para objetos agregados como _id: { cidade, bairro }
+        val = Object.values(val).join(' - '); 
+      }
+
+      // Se for uma chave de preço, formata automaticamente
+      if (key.includes('preco') || key.includes('valor')) {
+        val = money(val);
+      }
+      
+      return `<td>${escapeHtml(val)}</td>`;
+    }).join('');
+    tbody.appendChild(tr);
+  });
+  
+  table.appendChild(tbody);
+  return table;
 }
 
 function renderItem({ title, lines, onDelete }) {
