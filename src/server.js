@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { connectDatabase } from './db.js';
+import { connectDB } from './db.js';
 import { clientesRouter } from './routes/clientes.js';
 import { imoveisRouter } from './routes/imoveis.js';
 import { visitasRouter } from './routes/visitas.js';
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const db = await connectDatabase();
+const db = await connectDB();
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', database: db.databaseName });

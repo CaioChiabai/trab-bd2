@@ -1,3 +1,55 @@
+import {
+  TIPOS_LOGRADOURO,
+  UFS,
+  TIPOS_IMOVEL
+} from './constants.js';
+
+function preencherSelect(select, options, placeholder) {
+  select.innerHTML = `<option value="">${placeholder}</option>`;
+
+  options.forEach(optionValue => {
+    const option = document.createElement('option');
+    option.value = optionValue;
+    option.textContent = optionValue;
+    select.appendChild(option);
+  });
+}
+
+function carregarOpcoesFixas() {
+  
+  preencherSelect(
+  document.querySelector('#imovelForm select[name="tipo"]'),
+  TIPOS_IMOVEL,
+  'Tipo do imóvel'
+);
+
+  // CLIENTES
+  preencherSelect(
+    document.querySelector('#clienteForm select[name="tipo_logradouro"]'),
+    TIPOS_LOGRADOURO,
+    'Tipo logradouro'
+  );
+
+  preencherSelect(
+    document.querySelector('#clienteForm select[name="uf"]'),
+    UFS,
+    'UF'
+  );
+
+  // IMÓVEIS
+  preencherSelect(
+    document.querySelector('#imovelForm select[name="tipo_logradouro"]'),
+    TIPOS_LOGRADOURO,
+    'Tipo logradouro'
+  );
+
+  preencherSelect(
+    document.querySelector('#imovelForm select[name="uf"]'),
+    UFS,
+    'UF'
+  );
+}
+
 const state = {
   clientes: [],
   imoveis: [],
@@ -33,11 +85,24 @@ document.getElementById('clienteForm').addEventListener('submit', async (event) 
   await handleAction(async () => {
     const form = new FormData(event.currentTarget);
     const tipo = form.getAll('tipo');
+    if (tipo.length === 0) {
+      alert('Selecione pelo menos um tipo de cliente.');
+      return;
+    };
     const novoCliente = await api('/api/clientes', {
       method: 'POST',
       body: {
         nome: form.get('nome'),
-        endereco: form.get('endereco'),
+        endereco: {
+        tipo_logradouro: form.get('tipo_logradouro'),
+        logradouro: form.get('logradouro'),
+        numero: form.get('numero'),
+        complemento: form.get('complemento'),
+        bairro: form.get('bairro'),
+        cep: form.get('cep'),
+        cidade: form.get('cidade'),
+        uf: form.get('uf')
+        },
         telefone: form.get('telefone'),
         email: form.get('email'),
         tipo
@@ -80,12 +145,15 @@ document.getElementById('imovelForm').addEventListener('submit', async (event) =
       body: {
         tipo: form.get('tipo'),
         endereco: {
-          logradouro: form.get('logradouro'),
-          numero: form.get('numero'),
-          bairro: form.get('bairro'),
-          cidade: form.get('cidade'),
-          uf: form.get('uf')
-        },
+        tipo_logradouro: form.get('tipo_logradouro'),
+        logradouro: form.get('logradouro'),
+        numero: form.get('numero'),
+        complemento: form.get('complemento'),
+        bairro: form.get('bairro'),
+        cep: form.get('cep'),
+        cidade: form.get('cidade'),
+        uf: form.get('uf')
+      },
         preco: Number(form.get('preco')),
         data_construcao: form.get('data_construcao'),
         ocupado: form.get('ocupado') === 'on',
@@ -149,7 +217,7 @@ async function loadClientes() {
       title: cliente.nome,
       lines: [
         `${cliente.tipo.join(', ')} | ${cliente.email} | ${cliente.telefone}`,
-        cliente.endereco,
+        `${cliente.endereco.tipo_logradouro} ${cliente.endereco.logradouro}, ${cliente.endereco.numero} - ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`,
         `Interesses: ${cliente.interesses?.length || 0}`
       ],
       onDelete: () => remove(endpoints.clientes, cliente._id)
@@ -179,7 +247,7 @@ async function loadImoveis() {
     list.appendChild(renderItem({
       title: `${imovel.tipo} - ${money(imovel.preco)}`,
       lines: [
-        `${imovel.endereco.logradouro}, ${imovel.endereco.numero}, ${imovel.endereco.bairro}, ${imovel.endereco.cidade}/${imovel.endereco.uf}`,
+        `${imovel.endereco.tipo_logradouro} ${imovel.endereco.logradouro}, ${imovel.endereco.numero} - ${imovel.endereco.bairro}, ${imovel.endereco.cidade}/${imovel.endereco.uf}`,
         `Vendedor: ${vendedor?.nome || imovel.dono_id}`,
         `Ocupado: ${imovel.ocupado ? 'sim' : 'nao'}`
       ],
@@ -299,7 +367,7 @@ async function runQueries() {
       // Estado de Erro / Falha de Conexão
       block.innerHTML = `<h3>${escapeHtml(title)}</h3>
         <div class="error-state" style="color: var(--danger-color); border: 1px solid var(--danger-color); padding: 1rem; border-radius: 4px;">
-          <p>⚠️ Falha ao carregar: ${escapeHtml(`error.message`)}</p>
+          <p>⚠️ Falha ao carregar: ${escapeHtml(error.message)}</p>
         </div>`;
     }
   }
@@ -318,7 +386,7 @@ function renderGenericTable(data) {
   const headers = Object.keys(data[0]);
   
   const thead = document.createElement('thead');
-  thead.innerHTML = `<tr>${`headers.map`(h => `<th>${escapeHtml(h.toUpperCase())}</th>`).join('')}</tr>`;
+  thead.innerHTML = `<tr>${headers.map(h => `<th>${escapeHtml(h.toUpperCase())}</th>`).join('')}</tr>`;
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
@@ -400,4 +468,5 @@ function escapeHtml(value) {
   })[char]);
 }
 
+carregarOpcoesFixas();
 handleAction(refreshData);

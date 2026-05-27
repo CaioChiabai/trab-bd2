@@ -7,15 +7,33 @@ const dbName = process.env.DB_NAME || 'empresa_imoveis';
 let client;
 let database;
 
-export async function connectDatabase() {
+export async function connectDB() {
   if (database) {
     return database;
   }
 
-  client = new MongoClient(uri);
-  await client.connect();
-  database = client.db(dbName);
-  await createIndexes(database);
+  try {
+    console.log(`Conectando ao MongoDB...`);
+    client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+    });
+    await client.connect();
+    database = client.db(dbName);
+    console.log(`Conectado com sucesso ao banco de dados: ${dbName}`);
+    
+    await createIndexes(database);
+    return database;
+  } catch (error) {
+    console.error('Erro ao conectar ao MongoDB:', error);
+    process.exit(1);
+  }
+}
+
+export function getDB() {
+  if (!database) {
+    throw new Error('Banco de dados não conectado. Chame connectDB() primeiro.');
+  }
   return database;
 }
 
@@ -24,6 +42,7 @@ export async function closeDatabase() {
     await client.close();
     client = undefined;
     database = undefined;
+    console.log('Conexão com o MongoDB encerrada.');
   }
 }
 
@@ -37,7 +56,7 @@ export function collections(db) {
 
 export function toObjectId(value, fieldName = 'id') {
   if (!ObjectId.isValid(value)) {
-    const error = new Error(`${fieldName} invalido`);
+    const error = new Error(`${fieldName} inválido`);
     error.status = 400;
     throw error;
   }
@@ -49,12 +68,15 @@ async function createIndexes(db) {
 
   await Promise.all([
     clientes.createIndex({ email: 1 }, { unique: true }),
-    clientes.createIndex({ tipo: 1 }),
-    imoveis.createIndex({ dono_id: 1 }),
-    imoveis.createIndex({ tipo: 1, preco: 1, ocupado: 1 }),
-    imoveis.createIndex({ 'endereco.bairro': 1, 'endereco.cidade': 1, 'endereco.uf': 1 }),
-    visitas.createIndex({ imovel_id: 1 }),
+    clientes.createIndex({ telefone: 1 }),
+    imoveis.createIndex({ 'endereco.cidade': 1 }),
+    imoveis.createIndex({ 'endereco.bairro': 1 }),
+    imoveis.createIndex({ preco: 1 }),
+    imoveis.createIndex({ tipo: 1 }),
     visitas.createIndex({ cliente_id: 1 }),
-    visitas.createIndex({ data_hora: -1 })
-  ]);
+    visitas.createIndex({ imovel_id: 1 }),
+    visitas.createIndex({ data_hora: 1 })
+  ]).catch(err => console.error('Erro ao criar índices:', err));
+  
+  console.log('Índices criados/verificados com sucesso.');
 }

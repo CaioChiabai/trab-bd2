@@ -61,9 +61,16 @@ export function imoveisRouter(db) {
 }
 
 async function assertVendedorExists(clientes, id) {
-  const vendedor = await clientes.findOne({ _id: id, tipo: 'vendedor' });
+  const vendedor = await clientes.findOne({
+    _id: id,
+    tipo: 'vendedor'
+  });
+
   if (!vendedor) {
-    const error = new Error('dono_id deve referenciar um cliente vendedor');
+    const error = new Error(
+      'dono_id deve referenciar um cliente vendedor'
+    );
+
     error.status = 400;
     throw error;
   }

@@ -30,7 +30,14 @@
         </div>
         <form id="clienteForm" class="form-grid">
           <input name="nome" placeholder="Nome" required>
-          <input name="endereco" placeholder="Endereco completo" required>
+          <select name="tipo_logradouro" required></select>
+          <input name="logradouro" placeholder="Logradouro" required>
+          <input name="numero" placeholder="Numero" required>
+          <input name="complemento" placeholder="Complemento">
+          <input name="bairro" placeholder="Bairro" required>
+          <input name="cep" placeholder="CEP" required>
+          <input name="cidade" placeholder="Cidade" required>
+          <select name="uf" required></select>          
           <input name="telefone" placeholder="Telefone" required>
           <input name="email" type="email" placeholder="E-mail" required>
           <label class="check"><input type="checkbox" name="tipo" value="vendedor"> Vendedor</label>
@@ -44,7 +51,7 @@
           <label class="check"><input type="checkbox" name="area_lazer"> Area de lazer</label>
           <input name="bairro" placeholder="Bairro" required>
           <input name="cidade" placeholder="Cidade" required>
-          <input name="uf" maxlength="2" placeholder="UF" required>
+          <select name="uf" required></select>          
           <input name="valor_maximo" type="number" min="1" placeholder="Valor maximo" required>
           <button class="primary" type="submit">Adicionar interesse</button>
         </form>
@@ -57,12 +64,14 @@
           <span id="imoveisCount" class="counter">0</span>
         </div>
         <form id="imovelForm" class="form-grid">
-          <input name="tipo" placeholder="Tipo: casa, apartamento, loja..." required>
+          <select name="tipo" required></select>
+          <select name="tipo_logradouro" required></select>
           <input name="logradouro" placeholder="Logradouro" required>
           <input name="numero" placeholder="Numero" required>
           <input name="bairro" placeholder="Bairro" required>
           <input name="cidade" placeholder="Cidade" required>
-          <input name="uf" maxlength="2" placeholder="UF" required>
+          <select name="uf" required></select>
+          <input name="cep" placeholder="CEP" required>          
           <input name="preco" type="number" min="1" placeholder="Preco" required>
           <input name="data_construcao" type="date" required>
           <label class="check"><input type="checkbox" name="ocupado"> Ocupado</label>
