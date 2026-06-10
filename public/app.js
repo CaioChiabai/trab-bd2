@@ -4,6 +4,14 @@ import {
   TIPOS_IMOVEL
 } from './constants.js';
 
+const editingState = {
+  clienteId: null,
+  imovelId: null,
+  visitaId:null,
+  interesseClienteId: null,
+  interesseIndex: null
+};
+
 function preencherSelect(select, options, placeholder) {
   select.innerHTML = `<option value="">${placeholder}</option>`;
 
@@ -209,29 +217,89 @@ async function loadAll() {
 
 async function loadClientes() {
   state.clientes = await api(endpoints.clientes);
-  document.getElementById('clientesCount').textContent = state.clientes.length;
+
+  document.getElementById('clientesCount').textContent =
+    state.clientes.length;
+
   const list = document.getElementById('clientesList');
   list.innerHTML = '';
+
   state.clientes.forEach((cliente) => {
-    list.appendChild(renderItem({
+
+    // CLIENTE EM MODO EDIÇÃO
+    if (editingState.clienteId === cliente._id) {
+      list.appendChild(renderClienteEditor(cliente));
+      return;
+    }
+
+    const card = renderItem({
       title: cliente.nome,
       lines: [
         `${cliente.tipo.join(', ')} | ${cliente.email} | ${cliente.telefone}`,
         `${cliente.endereco.tipo_logradouro} ${cliente.endereco.logradouro}, ${cliente.endereco.numero} - ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`,
         `Interesses: ${cliente.interesses?.length || 0}`
       ],
+
+      onEdit: () => {
+        editingState.clienteId = cliente._id;
+        loadClientes();
+      },
+
       onDelete: () => remove(endpoints.clientes, cliente._id)
-    }));
+    });
+
+    const actions = card.querySelector('.item-actions');
+
+    // BOTÕES DE EDIÇÃO DOS INTERESSES
+    (cliente.interesses || []).forEach((interesse, index) => {
+
+      const btn = document.createElement('button');
+
+      btn.type = 'button';
+      btn.className = 'secondary';
+      btn.textContent = `Editar Interesse ${index + 1}`;
+
+      btn.onclick = () => {
+        editingState.interesseClienteId = cliente._id;
+        editingState.interesseIndex = index;
+        loadClientes();
+      };
+
+      actions.appendChild(btn);
+    });
+
+    list.appendChild(card);
+
+    // RENDERIZA O FORMULÁRIO DE EDIÇÃO DO INTERESSE
+    (cliente.interesses || []).forEach((interesse, index) => {
+
+      if (
+        editingState.interesseClienteId === cliente._id &&
+        editingState.interesseIndex === index
+      ) {
+
+        list.appendChild(
+          renderInteresseEditor(
+            cliente,
+            interesse,
+            index
+          )
+        );
+      }
+    });
+
   });
 }
 
 async function loadImoveis() {
   const params = new URLSearchParams();
+
   const tipo = document.getElementById('filterTipo').value;
   const cidade = document.getElementById('filterCidade').value;
   const bairro = document.getElementById('filterBairro').value;
   const precoMax = document.getElementById('filterPrecoMax').value;
   const disponiveis = document.getElementById('filterDisponiveis').checked;
+
   if (tipo) params.set('tipo', tipo);
   if (cidade) params.set('cidade', cidade);
   if (bairro) params.set('bairro', bairro);
@@ -239,40 +307,109 @@ async function loadImoveis() {
   if (disponiveis) params.set('disponiveis', 'true');
 
   state.imoveis = await api(`${endpoints.imoveis}?${params.toString()}`);
-  document.getElementById('imoveisCount').textContent = state.imoveis.length;
+
+  document.getElementById('imoveisCount').textContent =
+    state.imoveis.length;
+
   const list = document.getElementById('imoveisList');
   list.innerHTML = '';
+
   state.imoveis.forEach((imovel) => {
-    const vendedor = state.clientes.find((cliente) => cliente._id === imovel.dono_id);
-    list.appendChild(renderItem({
-      title: `${imovel.tipo} - ${money(imovel.preco)}`,
-      lines: [
-        `${imovel.endereco.tipo_logradouro} ${imovel.endereco.logradouro}, ${imovel.endereco.numero} - ${imovel.endereco.bairro}, ${imovel.endereco.cidade}/${imovel.endereco.uf}`,
-        `Vendedor: ${vendedor?.nome || imovel.dono_id}`,
-        `Ocupado: ${imovel.ocupado ? 'sim' : 'nao'}`
-      ],
-      onDelete: () => remove(endpoints.imoveis, imovel._id)
-    }));
+
+    // MODO EDIÇÃO
+    if (editingState.imovelId === imovel._id) {
+      list.appendChild(renderImovelEditor(imovel));
+      return;
+    }
+
+    // MODO VISUALIZAÇÃO NORMAL
+    const vendedor = state.clientes.find(
+      (cliente) => cliente._id === imovel.dono_id
+    );
+
+    list.appendChild(
+      renderItem({
+        title: `${imovel.tipo} - ${money(imovel.preco)}`,
+        lines: [
+          `${imovel.endereco.tipo_logradouro} ${imovel.endereco.logradouro}, ${imovel.endereco.numero} - ${imovel.endereco.bairro}, ${imovel.endereco.cidade}/${imovel.endereco.uf}`,
+          `Vendedor: ${vendedor?.nome || imovel.dono_id}`,
+          `Ocupado: ${imovel.ocupado ? 'sim' : 'nao'}`
+        ],
+        onEdit: () => editarImovel(imovel),
+        onDelete: () => remove(endpoints.imoveis, imovel._id)
+      })
+    );
   });
 }
 
 async function loadVisitas() {
+
   state.visitas = await api(endpoints.visitas);
-  document.getElementById('visitasCount').textContent = state.visitas.length;
+
+  document.getElementById('visitasCount').textContent =
+    state.visitas.length;
+
   const list = document.getElementById('visitasList');
+
   list.innerHTML = '';
+
   state.visitas.forEach((visita) => {
-    const cliente = state.clientes.find((item) => item._id === visita.cliente_id);
-    const imovel = state.imoveis.find((item) => item._id === visita.imovel_id);
+
+    const cliente =
+      state.clientes.find(
+        item => item._id === visita.cliente_id
+      );
+
+    const imovel =
+      state.imoveis.find(
+        item => item._id === visita.imovel_id
+      );
+
+    // VISITA EM MODO EDIÇÃO
+    if (editingState.visitaId === visita._id) {
+
+      list.appendChild(
+        renderVisitaEditor(
+          visita,
+          cliente,
+          imovel
+        )
+      );
+
+      return;
+    }
+
     list.appendChild(renderItem({
-      title: `${cliente?.nome || visita.cliente_id} visitou ${imovel?.tipo || visita.imovel_id}`,
+
+      title:
+        `${cliente?.nome || visita.cliente_id} visitou ${imovel?.tipo || visita.imovel_id}`,
+
       lines: [
-        new Date(visita.data_hora).toLocaleString('pt-BR'),
-        visita.observacao || 'Sem observacao'
+        new Date(visita.data_hora)
+          .toLocaleString('pt-BR'),
+
+        visita.observacao ||
+        'Sem observacao'
       ],
-      onDelete: () => remove(endpoints.visitas, visita._id)
+
+      onEdit: () => {
+
+        editingState.visitaId =
+          visita._id;
+
+        loadVisitas();
+      },
+
+      onDelete: () =>
+        remove(
+          endpoints.visitas,
+          visita._id
+        )
+
     }));
+
   });
+
 }
 
 function populateSelects() {
@@ -373,6 +510,121 @@ async function runQueries() {
   }
 }
 
+function renderImovelEditor(imovel) {
+
+  const div = document.createElement('div');
+
+  div.className = 'item editing-card';
+
+  div.innerHTML = `
+    <div class="item-body">
+
+      <h3>Editando Imóvel</h3>
+
+      <input
+        id="edit-imovel-tipo"
+        value="${imovel.tipo || ''}"
+        placeholder="Tipo"
+      >
+
+      <input
+        id="edit-imovel-logradouro"
+        value="${imovel.endereco?.logradouro || ''}"
+        placeholder="Logradouro"
+      >
+
+      <input
+        id="edit-imovel-numero"
+        value="${imovel.endereco?.numero || ''}"
+        placeholder="Número"
+      >
+
+      <input
+        id="edit-imovel-bairro"
+        value="${imovel.endereco?.bairro || ''}"
+        placeholder="Bairro"
+      >
+
+      <input
+        id="edit-imovel-cidade"
+        value="${imovel.endereco?.cidade || ''}"
+        placeholder="Cidade"
+      >
+
+      <input
+        id="edit-imovel-uf"
+        value="${imovel.endereco?.uf || ''}"
+        placeholder="UF"
+      >
+
+      <input
+        id="edit-imovel-cep"
+        value="${imovel.endereco?.cep || ''}"
+        placeholder="CEP"
+      >
+
+      <input
+        id="edit-imovel-preco"
+        type="number"
+        value="${imovel.preco || 0}"
+        placeholder="Preço"
+      >
+
+      <input
+        id="edit-imovel-data"
+        type="date"
+        value="${new Date(imovel.data_construcao)
+          .toISOString()
+          .split('T')[0]}"
+      >
+
+      <label>
+        <input
+          type="checkbox"
+          id="edit-imovel-ocupado"
+          ${imovel.ocupado ? 'checked' : ''}
+        >
+        Ocupado
+      </label>
+
+    </div>
+
+    <div class="item-actions">
+
+      <button
+        type="button"
+        class="primary"
+      >
+        Salvar
+      </button>
+
+      <button
+        type="button"
+        class="secondary"
+      >
+        Cancelar
+      </button>
+
+    </div>
+  `;
+
+  const buttons =
+    div.querySelectorAll('button');
+
+  buttons[0].onclick =
+    () => salvarImovel(imovel);
+
+  buttons[1].onclick =
+    () => {
+
+      editingState.imovelId = null;
+
+      loadImoveis();
+    };
+
+  return div;
+}
+
 /**
  * Função Factory para renderizar tabelas HTML a partir de qualquer Array de Objetos JSON.
  * Mantém o padrão de UI e simplifica a manutenção.
@@ -419,21 +671,336 @@ function renderGenericTable(data) {
   return table;
 }
 
-function renderItem({ title, lines, onDelete }) {
+function renderItem({ title, lines, onDelete, onEdit }) {
   const template = document.getElementById('itemTemplate').content.cloneNode(true);
-  template.querySelector('.item-body').innerHTML = `<h3>${escapeHtml(title)}</h3>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}`;
+
+  template.querySelector('.item-body').innerHTML =
+    `<h3>${escapeHtml(title)}</h3>` +
+    lines.map(line => `<p>${escapeHtml(line)}</p>`).join('');
+
+  const actions = template.querySelector('.item-actions');
+
+  if (onEdit) {
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'secondary';
+    editButton.textContent = 'Editar';
+    editButton.addEventListener('click', onEdit);
+    actions.appendChild(editButton);
+  }
+
   const removeButton = document.createElement('button');
   removeButton.type = 'button';
   removeButton.className = 'danger';
   removeButton.textContent = 'Excluir';
   removeButton.addEventListener('click', onDelete);
-  template.querySelector('.item-actions').appendChild(removeButton);
+
+  actions.appendChild(removeButton);
+
+  const editButton =
+  document.createElement('button');
+
+  editButton.type = 'button';
+  editButton.className = 'secondary';
+  editButton.textContent = 'Editar';
+
+  editButton.addEventListener(
+    'click',
+    onEdit
+  );
+
+  actions.appendChild(editButton);
+
   return template;
+}
+
+function renderClienteEditor(cliente) {
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'item editing';
+
+  wrapper.innerHTML = `
+    <input id="edit-nome-${cliente._id}" value="${cliente.nome}">
+    <input id="edit-telefone-${cliente._id}" value="${cliente.telefone}">
+    <input id="edit-email-${cliente._id}" value="${cliente.email}">
+
+    <input id="edit-logradouro-${cliente._id}"
+      value="${cliente.endereco.logradouro}">
+
+    <input id="edit-numero-${cliente._id}"
+      value="${cliente.endereco.numero}">
+
+    <input id="edit-bairro-${cliente._id}"
+      value="${cliente.endereco.bairro}">
+
+    <input id="edit-cidade-${cliente._id}"
+      value="${cliente.endereco.cidade}">
+
+    <input id="edit-uf-${cliente._id}"
+      value="${cliente.endereco.uf}">
+  `;
+
+  const salvar = document.createElement('button');
+  salvar.textContent = 'Salvar';
+
+  salvar.onclick = async () => {
+
+    await api(`/api/clientes/${cliente._id}`, {
+      method: 'PUT',
+      body: {
+        nome: document.getElementById(`edit-nome-${cliente._id}`).value,
+        telefone: document.getElementById(`edit-telefone-${cliente._id}`).value,
+        email: document.getElementById(`edit-email-${cliente._id}`).value,
+
+        endereco: {
+          ...cliente.endereco,
+          logradouro: document.getElementById(`edit-logradouro-${cliente._id}`).value,
+          numero: document.getElementById(`edit-numero-${cliente._id}`).value,
+          bairro: document.getElementById(`edit-bairro-${cliente._id}`).value,
+          cidade: document.getElementById(`edit-cidade-${cliente._id}`).value,
+          uf: document.getElementById(`edit-uf-${cliente._id}`).value
+        },
+
+        tipo: cliente.tipo
+      }
+    });
+
+    editingState.clienteId = null;
+    await clickRefreshButton();
+  };
+
+  const cancelar = document.createElement('button');
+  cancelar.textContent = 'Cancelar';
+
+  cancelar.onclick = async () => {
+    editingState.clienteId = null;
+    await loadClientes();
+  };
+
+  wrapper.appendChild(salvar);
+  wrapper.appendChild(cancelar);
+
+  return wrapper;
+}
+
+function renderInteresseEditor(cliente, interesse, index) {
+  const div = document.createElement('div');
+
+  div.innerHTML = `
+    <div class="form-grid">
+
+      <input class="edit-quartos"
+             type="number"
+             value="${interesse.quartos}">
+
+      <input class="edit-tamanho"
+             type="number"
+             value="${interesse.tamanho_min_m2}">
+
+      <input class="edit-bairro"
+             value="${interesse.bairro}">
+
+      <input class="edit-cidade"
+             value="${interesse.cidade}">
+
+      <input class="edit-uf"
+             value="${interesse.uf}">
+
+      <input class="edit-valor"
+             type="number"
+             value="${interesse.valor_maximo}">
+
+      <label>
+        <input
+          class="edit-area"
+          type="checkbox"
+          ${interesse.area_lazer ? 'checked' : ''}
+        >
+        Área de lazer
+      </label>
+
+      <button class="primary save-btn">
+        Salvar
+      </button>
+
+      <button class="secondary cancel-btn">
+        Cancelar
+      </button>
+
+    </div>
+  `;
+
+  div.querySelector('.save-btn')
+    .addEventListener('click', async () => {
+
+      await api(
+        `/api/clientes/${cliente._id}/interesses/${index}`,
+        {
+          method: 'PUT',
+          body: {
+            quartos:
+              Number(div.querySelector('.edit-quartos').value),
+
+            tamanho_min_m2:
+              Number(div.querySelector('.edit-tamanho').value),
+
+            bairro:
+              div.querySelector('.edit-bairro').value,
+
+            cidade:
+              div.querySelector('.edit-cidade').value,
+
+            uf:
+              div.querySelector('.edit-uf').value,
+
+            valor_maximo:
+              Number(div.querySelector('.edit-valor').value),
+
+            area_lazer:
+              div.querySelector('.edit-area').checked
+          }
+        }
+      );
+
+      editingState.interesseClienteId = null;
+      editingState.interesseIndex = null;
+
+      await clickRefreshButton();
+    });
+
+  div.querySelector('.cancel-btn')
+    .addEventListener('click', () => {
+      editingState.interesseClienteId = null;
+      editingState.interesseIndex = null;
+      loadClientes();
+    });
+
+  return div;
+}
+
+function renderVisitaEditor(
+  visita,
+  cliente,
+  imovel
+) {
+
+  const div = document.createElement('div');
+
+  div.className = 'item editing-card';
+
+  const dataHora =
+    new Date(visita.data_hora)
+      .toISOString()
+      .slice(0, 16);
+
+  div.innerHTML = `
+    <div class="item-body">
+
+      <h3>Editando Visita</h3>
+
+      <p>
+        Cliente:
+        ${cliente?.nome || ''}
+      </p>
+
+      <p>
+        Imóvel:
+        ${imovel?.tipo || ''}
+      </p>
+
+      <input
+        type="datetime-local"
+        id="edit-visita-data"
+        value="${dataHora}"
+      >
+
+      <textarea
+        id="edit-visita-observacao"
+        rows="4"
+      >${visita.observacao || ''}</textarea>
+
+    </div>
+
+    <div class="item-actions">
+
+      <button
+        class="primary"
+        type="button"
+      >
+        Salvar
+      </button>
+
+      <button
+        class="secondary"
+        type="button"
+      >
+        Cancelar
+      </button>
+
+    </div>
+  `;
+
+  const botoes =
+    div.querySelectorAll('button');
+
+  botoes[0].onclick =
+    () => salvarVisita(visita);
+
+  botoes[1].onclick =
+    () => {
+
+      editingState.visitaId =
+        null;
+
+      loadVisitas();
+    };
+
+  return div;
 }
 
 async function remove(endpoint, id) {
   await api(`${endpoint}/${id}`, { method: 'DELETE' });
   await clickRefreshButton();
+}
+
+async function salvarVisita(visita) {
+
+  const data_hora =
+    document.getElementById(
+      'edit-visita-data'
+    ).value;
+
+  const observacao =
+    document.getElementById(
+      'edit-visita-observacao'
+    ).value;
+
+  await api(
+
+    `/api/visitas/${visita._id}`,
+
+    {
+      method: 'PUT',
+
+      body: {
+        cliente_id:
+          visita.cliente_id,
+
+        imovel_id:
+          visita.imovel_id,
+
+        data_hora,
+
+        observacao
+      }
+    }
+
+  );
+
+  editingState.visitaId =
+    null;
+
+  await loadVisitas();
 }
 
 async function api(url, options = {}) {
@@ -466,6 +1033,16 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#039;'
   })[char]);
+}
+
+function editarCliente(cliente) {
+  editingState.clienteId = cliente._id;
+  loadClientes();
+}
+
+function editarImovel(imovel) {
+  editingState.imovelId = imovel._id;
+  loadImoveis();
 }
 
 carregarOpcoesFixas();
