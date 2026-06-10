@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncRoute } from '../async-route.js';
-import { collections, toObjectId } from '../db.js';
+import { collections, toId, getNextSequenceValue } from '../db.js';
 import { normalizeVisita } from '../validation.js';
 
 export function visitasRouter(db) {
@@ -13,26 +13,27 @@ export function visitasRouter(db) {
   }));
 
   router.get('/:id', asyncRoute(async (req, res) => {
-    const visita = await visitas.findOne({ _id: toObjectId(req.params.id) });
+    const visita = await visitas.findOne({ _id: toId(req.params.id) });
     if (!visita) return res.status(404).json({ error: 'Visita nao encontrada' });
     res.json(visita);
   }));
 
   router.post('/', asyncRoute(async (req, res) => {
     const visita = normalizeVisita(req.body);
-    visita.imovel_id = toObjectId(visita.imovel_id, 'imovel_id');
-    visita.cliente_id = toObjectId(visita.cliente_id, 'cliente_id');
+    visita.imovel_id = toId(visita.imovel_id, 'imovel_id');
+    visita.cliente_id = toId(visita.cliente_id, 'cliente_id');
     await assertReferences(clientes, imoveis, visita);
 
-    const result = await visitas.insertOne(visita);
-    res.status(201).json({ ...visita, _id: result.insertedId });
+    visita._id = await getNextSequenceValue(db, 'visita_id');
+    await visitas.insertOne(visita);
+    res.status(201).json(visita);
   }));
 
   router.put('/:id', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const visita = normalizeVisita(req.body, true);
-    if (visita.imovel_id) visita.imovel_id = toObjectId(visita.imovel_id, 'imovel_id');
-    if (visita.cliente_id) visita.cliente_id = toObjectId(visita.cliente_id, 'cliente_id');
+    if (visita.imovel_id) visita.imovel_id = toId(visita.imovel_id, 'imovel_id');
+    if (visita.cliente_id) visita.cliente_id = toId(visita.cliente_id, 'cliente_id');
     await assertReferences(clientes, imoveis, visita);
 
     const result = await visitas.findOneAndUpdate(
@@ -45,7 +46,7 @@ export function visitasRouter(db) {
   }));
 
   router.delete('/:id', asyncRoute(async (req, res) => {
-    const result = await visitas.deleteOne({ _id: toObjectId(req.params.id) });
+    const result = await visitas.deleteOne({ _id: toId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Visita nao encontrada' });
     res.status(204).send();
   }));

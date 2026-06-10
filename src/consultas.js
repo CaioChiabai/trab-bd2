@@ -1,7 +1,7 @@
-import { closeDatabase, collections, connectDatabase } from './db.js';
+import { closeDatabase, collections, connectDB } from './db.js';
 import { pipelines } from './queries.js';
 
-const db = await connectDatabase();
+const db = await connectDB();
 const { clientes, imoveis, visitas } = collections(db);
 
 const consultas = [

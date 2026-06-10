@@ -1,260 +1,90 @@
-import {
-  TIPOS_LOGRADOURO,
-  UFS,
-  TIPOS_IMOVEL
-} from './constants.js';
+import { z } from 'zod';
+import { TIPOS_LOGRADOURO, UFS, TIPOS_IMOVEL } from './shared/constants.js';
 
-const tiposCliente = new Set(['vendedor', 'comprador']);
-
-function badRequest(message) {
-  const error = new Error(message);
-  error.status = 400;
-  return error;
+export function validateEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!regex.test(email)) throw new Error('Email inválido');
+  return email.toLowerCase();
 }
 
-function validateEnum(value, allowed, field) {
-  if (!allowed.includes(value)) {
-    throw badRequest(
-      `${field} inválido. Valores permitidos: ${allowed.join(', ')}`
-    );
-  }
-
-  return value;
+export function validateNumber(value) {
+  const num = Number(value);
+  if (isNaN(num) || num < 0) throw new Error('Número inválido');
+  return num;
 }
 
-export function assertRequired(body, fields) {
-  const missing = fields.filter(
-    (field) =>
-      body[field] === undefined ||
-      body[field] === null ||
-      body[field] === ''
-  );
+export const EnderecoSchema = z.object({
+  tipo_logradouro: z.string().transform(v => TIPOS_LOGRADOURO.find(t => t.toLowerCase() === v.toLowerCase()) || v).pipe(z.enum(TIPOS_LOGRADOURO)),
+  logradouro: z.string().trim().min(1),
+  numero: z.string().trim().min(1),
+  complemento: z.string().trim().optional(),
+  bairro: z.string().trim().min(1),
+  cep: z.string().regex(/^\d{5}-\d{3}$/, 'CEP deve estar no formato 00000-000'),
+  cidade: z.string().trim().min(1),
+  uf: z.string().transform(v => v.toUpperCase()).pipe(z.enum(UFS))
+});
 
-  if (missing.length > 0) {
-    throw badRequest(
-      `Campos obrigatorios ausentes: ${missing.join(', ')}`
-    );
-  }
-}
+export const InteresseSchema = z.object({
+  quartos: z.coerce.number().min(0).refine((val) => validateNumber(val) !== null),
+  tamanho_min_m2: z.coerce.number().min(1).refine((val) => validateNumber(val) !== null),
+  area_lazer: z.union([z.boolean(), z.string().transform(val => val === 'true')]),
+  bairro: z.string().trim().min(1),
+  cidade: z.string().trim().min(1),
+  uf: z.string().transform(v => v.toUpperCase()).pipe(z.enum(UFS)),
+  valor_maximo: z.coerce.number().min(0).refine((val) => validateNumber(val) !== null)
+});
 
-function parseBoolean(value) {
-  if (typeof value === 'boolean') return value;
+export const ClienteSchema = z.object({
+  nome: z.string().trim().min(1),
+  endereco: EnderecoSchema,
+  telefone: z.string().trim().min(1),
+  email: z.string().trim().refine((val) => {
+    try { validateEmail(val); return true; } catch { return false; }
+  }, { message: "Email inválido" }),
+  tipo: z.union([
+    z.string().transform(val => [val]),
+    z.array(z.string())
+  ]).transform(arr => {
+    const valid = ['vendedor', 'comprador'];
+    const filtered = arr.filter(t => valid.includes(t.toLowerCase()));
+    if (filtered.length === 0) throw new Error('tipo deve conter vendedor, comprador ou ambos');
+    return [...new Set(filtered.map(t => t.toLowerCase()))];
+  }),
+  interesses: z.array(InteresseSchema).optional().default([])
+});
 
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+export const ImovelSchema = z.object({
+  tipo: z.string().transform(v => TIPOS_IMOVEL.find(t => t.toLowerCase() === v.toLowerCase()) || v).pipe(z.enum(TIPOS_IMOVEL)),
+  endereco: EnderecoSchema,
+  preco: z.coerce.number().min(0).refine((val) => validateNumber(val) !== null, { message: "Preço inválido" }),
+  data_construcao: z.coerce.date().refine((date) => !isNaN(date.getTime()), { message: "Data inválida" }),
+  ocupado: z.union([z.boolean(), z.string().transform(val => val === 'true')]),
+  dono_id: z.union([z.string(), z.number()]) // Convertido para Number nas rotas
+});
 
-  return Boolean(value);
-}
+export const VisitaSchema = z.object({
+  imovel_id: z.union([z.string(), z.number()]),
+  cliente_id: z.union([z.string(), z.number()]),
+  data_hora: z.coerce.date().refine((date) => !isNaN(date.getTime()), { message: "Data e hora inválidas" }),
+  observacao: z.string().trim().optional()
+});
 
-function normalizeEndereco(endereco) {
-  assertRequired(endereco || {}, [
-    'tipo_logradouro',
-    'logradouro',
-    'numero',
-    'bairro',
-    'cep',
-    'cidade',
-    'uf'
-  ]);
-
-  return {
-    tipo_logradouro: validateEnum(
-      String(endereco.tipo_logradouro).trim(),
-      TIPOS_LOGRADOURO,
-      'tipo_logradouro'
-    ),
-
-    logradouro: String(endereco.logradouro).trim(),
-
-    numero: String(endereco.numero).trim(),
-
-    complemento: endereco.complemento
-      ? String(endereco.complemento).trim()
-      : '',
-
-    bairro: String(endereco.bairro).trim(),
-
-    cep: String(endereco.cep).trim(),
-
-    cidade: String(endereco.cidade).trim(),
-
-    uf: validateEnum(
-      String(endereco.uf).trim().toUpperCase(),
-      UFS,
-      'uf'
-    )
-  };
-}
-
+// Wrapper functions
 export function normalizeCliente(body, partial = false) {
-  const cliente = {};
-
-  if (!partial) {
-    assertRequired(body, [
-      'nome',
-      'endereco',
-      'telefone',
-      'email',
-      'tipo'
-    ]);
-  }
-
-  if (body.nome !== undefined) {
-    cliente.nome = String(body.nome).trim();
-  }
-
-  if (body.endereco !== undefined) {
-    cliente.endereco = normalizeEndereco(body.endereco);
-  }
-
-  if (body.telefone !== undefined) {
-    cliente.telefone = String(body.telefone).trim();
-  }
-
-  if (body.email !== undefined) {
-    cliente.email = String(body.email)
-      .trim()
-      .toLowerCase();
-  }
-
-  if (body.tipo !== undefined) {
-    const tipo = Array.isArray(body.tipo)
-      ? body.tipo
-      : [body.tipo];
-
-    const invalidos = tipo.filter(
-      (item) => !tiposCliente.has(item)
-    );
-
-    if (tipo.length === 0 || invalidos.length > 0) {
-      throw badRequest(
-        'tipo deve conter vendedor, comprador ou ambos'
-      );
-    }
-
-    cliente.tipo = [...new Set(tipo)];
-  }
-
-  if (body.interesses !== undefined) {
-    if (!Array.isArray(body.interesses)) {
-      throw badRequest('interesses deve ser uma lista');
-    }
-
-    cliente.interesses = body.interesses.map(
-      normalizeInteresse
-    );
-  } else if (!partial) {
-    cliente.interesses = [];
-  }
-
-  return cliente;
+  const schema = partial ? ClienteSchema.partial() : ClienteSchema;
+  return schema.parse(body);
 }
 
 export function normalizeInteresse(body) {
-  assertRequired(body, [
-    'quartos',
-    'tamanho_min_m2',
-    'area_lazer',
-    'bairro',
-    'cidade',
-    'uf',
-    'valor_maximo'
-  ]);
-
-  return {
-    quartos: Number(body.quartos),
-
-    tamanho_min_m2: Number(body.tamanho_min_m2),
-
-    area_lazer: parseBoolean(body.area_lazer),
-
-    bairro: String(body.bairro).trim(),
-
-    cidade: String(body.cidade).trim(),
-
-    uf: validateEnum(
-      String(body.uf).trim().toUpperCase(),
-      UFS,
-      'uf'
-    ),
-
-    valor_maximo: Number(body.valor_maximo)
-  };
+  return InteresseSchema.parse(body);
 }
 
 export function normalizeImovel(body, partial = false) {
-  const imovel = {};
-
-  if (!partial) {
-    assertRequired(body, [
-      'tipo',
-      'endereco',
-      'preco',
-      'data_construcao',
-      'ocupado',
-      'dono_id'
-    ]);
-  }
-
-  if (body.tipo !== undefined) {
-    imovel.tipo = validateEnum(
-      String(body.tipo).trim(),
-      TIPOS_IMOVEL,
-      'tipo'
-    );
-  }
-
-  if (body.endereco !== undefined) {
-    imovel.endereco = normalizeEndereco(body.endereco);
-  }
-
-  if (body.preco !== undefined) {
-    imovel.preco = Number(body.preco);
-  }
-
-  if (body.data_construcao !== undefined) {
-    imovel.data_construcao = new Date(
-      body.data_construcao
-    );
-  }
-
-  if (body.ocupado !== undefined) {
-    imovel.ocupado = parseBoolean(body.ocupado);
-  }
-
-  if (body.dono_id !== undefined) {
-    imovel.dono_id = body.dono_id;
-  }
-
-  return imovel;
+  const schema = partial ? ImovelSchema.partial() : ImovelSchema;
+  return schema.parse(body);
 }
 
 export function normalizeVisita(body, partial = false) {
-  const visita = {};
-
-  if (!partial) {
-    assertRequired(body, [
-      'imovel_id',
-      'cliente_id',
-      'data_hora'
-    ]);
-  }
-
-  if (body.imovel_id !== undefined) {
-    visita.imovel_id = body.imovel_id;
-  }
-
-  if (body.cliente_id !== undefined) {
-    visita.cliente_id = body.cliente_id;
-  }
-
-  if (body.data_hora !== undefined) {
-    visita.data_hora = new Date(body.data_hora);
-  }
-
-  if (body.observacao !== undefined) {
-    visita.observacao = String(body.observacao).trim();
-  }
-
-  return visita;
+  const schema = partial ? VisitaSchema.partial() : VisitaSchema;
+  return schema.parse(body);
 }

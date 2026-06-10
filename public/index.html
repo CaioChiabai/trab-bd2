@@ -3,123 +3,166 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Empresa de Imoveis - CRUD MongoDB</title>
+    <title>Imobiliária - Gestão de CRUD</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <h1>Empresa de Imoveis</h1>
-        <p>CRUD MongoDB para clientes, imoveis, visitas e consultas agregadas.</p>
+      <div class="topbar-content">
+        <h1>Imobiliária App</h1>
+        <p>Gestão moderna e responsiva com MongoDB e Node.js</p>
       </div>
-      <button id="refreshAll" class="primary">Atualizar dados</button>
+      <button id="refreshAll" class="primary">
+        🔄 Atualizar Dados
+      </button>
     </header>
 
     <main class="layout">
-      <nav class="tabs" aria-label="Secoes do sistema">
+      <nav class="tabs" aria-label="Seções do sistema">
         <button class="tab active" data-tab="clientes">Clientes</button>
-        <button class="tab" data-tab="imoveis">Imoveis</button>
+        <button class="tab" data-tab="imoveis">Imóveis</button>
         <button class="tab" data-tab="visitas">Visitas</button>
-        <button class="tab" data-tab="consultas">Consultas</button>
+        <button class="tab" data-tab="consultas">Consultas & Relatórios</button>
       </nav>
 
+      <!-- SEÇÃO CLIENTES -->
       <section id="clientes" class="panel active">
         <div class="section-head">
-          <h2>Clientes</h2>
+          <h2>Gestão de Clientes</h2>
           <span id="clientesCount" class="counter">0</span>
         </div>
-        <form id="clienteForm" class="form-grid">
-          <input name="nome" placeholder="Nome" required>
-          <select name="tipo_logradouro" required></select>
-          <input name="logradouro" placeholder="Logradouro" required>
-          <input name="numero" placeholder="Numero" required>
-          <input name="complemento" placeholder="Complemento">
-          <input name="bairro" placeholder="Bairro" required>
-          <input name="cep" placeholder="CEP" required>
-          <input name="cidade" placeholder="Cidade" required>
-          <select name="uf" required></select>          
+        
+        <form id="clienteForm" class="form-card form-grid">
+          <input name="nome" placeholder="Nome completo" required>
           <input name="telefone" placeholder="Telefone" required>
           <input name="email" type="email" placeholder="E-mail" required>
-          <label class="check"><input type="checkbox" name="tipo" value="vendedor"> Vendedor</label>
-          <label class="check"><input type="checkbox" name="tipo" value="comprador"> Comprador</label>
-          <button class="primary" type="submit">Salvar cliente</button>
-        </form>
-        <form id="interesseForm" class="form-grid compact">
-          <select name="cliente_id" required></select>
-          <input name="quartos" type="number" min="0" placeholder="Quartos" required>
-          <input name="tamanho_min_m2" type="number" min="1" placeholder="Tamanho minimo m2" required>
-          <label class="check"><input type="checkbox" name="area_lazer"> Area de lazer</label>
-          <input name="bairro" placeholder="Bairro" required>
-          <input name="cidade" placeholder="Cidade" required>
-          <select name="uf" required></select>          
-          <input name="valor_maximo" type="number" min="1" placeholder="Valor maximo" required>
-          <button class="primary" type="submit">Adicionar interesse</button>
-        </form>
-        <div id="clientesList" class="list"></div>
-      </section>
-
-      <section id="imoveis" class="panel">
-        <div class="section-head">
-          <h2>Imoveis</h2>
-          <span id="imoveisCount" class="counter">0</span>
-        </div>
-        <form id="imovelForm" class="form-grid">
-          <select name="tipo" required></select>
+          
           <select name="tipo_logradouro" required></select>
           <input name="logradouro" placeholder="Logradouro" required>
-          <input name="numero" placeholder="Numero" required>
+          <input name="numero" placeholder="Número" required>
+          <input name="complemento" placeholder="Complemento">
+          
           <input name="bairro" placeholder="Bairro" required>
           <input name="cidade" placeholder="Cidade" required>
           <select name="uf" required></select>
-          <input name="cep" placeholder="CEP" required>          
-          <input name="preco" type="number" min="1" placeholder="Preco" required>
-          <input name="data_construcao" type="date" required>
-          <label class="check"><input type="checkbox" name="ocupado"> Ocupado</label>
-          <select name="dono_id" required></select>
-          <button class="primary" type="submit">Salvar imovel</button>
+          <input name="cep" placeholder="CEP" required>
+          
+          <div style="grid-column: 1 / -1; display: flex; gap: var(--spacing-md); border-top: 1px dashed var(--color-border); padding-top: var(--spacing-sm);">
+            <label class="check-group">
+              <input type="checkbox" name="tipo" value="vendedor"> Vendedor
+            </label>
+            <label class="check-group">
+              <input type="checkbox" name="tipo" value="comprador"> Comprador
+            </label>
+          </div>
+          
+          <div style="grid-column: 1 / -1;">
+            <button class="primary" type="submit">Cadastrar Cliente</button>
+          </div>
         </form>
-        <div class="filters">
-          <input id="filterTipo" placeholder="Filtrar tipo">
-          <input id="filterCidade" placeholder="Filtrar cidade">
-          <input id="filterBairro" placeholder="Filtrar bairro">
-          <input id="filterPrecoMax" type="number" placeholder="Preco maximo">
-          <label class="check"><input id="filterDisponiveis" type="checkbox"> Disponiveis</label>
-          <button id="applyFilters" class="primary" type="button">Filtrar</button>
+
+        <h3 style="margin-top: var(--spacing-xl); margin-bottom: var(--spacing-sm);">Adicionar Interesse a um Comprador</h3>
+        <form id="interesseForm" class="form-card form-grid compact">
+          <select name="cliente_id" required></select>
+          <input name="quartos" type="number" min="0" placeholder="Mínimo de Quartos" required>
+          <input name="tamanho_min_m2" type="number" min="1" placeholder="Tamanho Mínimo (m²)" required>
+          <input name="bairro" placeholder="Bairro" required>
+          <input name="cidade" placeholder="Cidade" required>
+          <select name="uf" required></select>
+          <input name="valor_maximo" type="number" min="1" placeholder="Valor Máximo" required>
+          <label class="check-group">
+            <input type="checkbox" name="area_lazer"> Com Área de Lazer
+          </label>
+          <div style="grid-column: 1 / -1;">
+            <button class="secondary" type="submit">Adicionar Interesse</button>
+          </div>
+        </form>
+
+        <div id="clientesList" class="list"></div>
+      </section>
+
+      <!-- SEÇÃO IMÓVEIS -->
+      <section id="imoveis" class="panel">
+        <div class="section-head">
+          <h2>Gestão de Imóveis</h2>
+          <span id="imoveisCount" class="counter">0</span>
         </div>
+        
+        <form id="imovelForm" class="form-card form-grid">
+          <select name="tipo" required></select>
+          <select name="dono_id" required></select>
+          <input name="preco" type="number" min="1" placeholder="Preço" required>
+          <input name="data_construcao" type="date" required>
+          
+          <select name="tipo_logradouro" required></select>
+          <input name="logradouro" placeholder="Logradouro" required>
+          <input name="numero" placeholder="Número" required>
+          <input name="complemento" placeholder="Complemento">
+          
+          <input name="bairro" placeholder="Bairro" required>
+          <input name="cidade" placeholder="Cidade" required>
+          <select name="uf" required></select>
+          <input name="cep" placeholder="CEP" required>
+          
+          <label class="check-group" style="grid-column: 1 / -1; border-top: 1px dashed var(--color-border); padding-top: var(--spacing-sm);">
+            <input type="checkbox" name="ocupado"> Imóvel está Ocupado
+          </label>
+          
+          <div style="grid-column: 1 / -1;">
+            <button class="primary" type="submit">Cadastrar Imóvel</button>
+          </div>
+        </form>
+
+        <h3 style="margin-top: var(--spacing-xl); margin-bottom: var(--spacing-sm);">Filtros de Pesquisa</h3>
+        <div class="filters form-grid compact">
+          <input id="filterTipo" placeholder="Tipo do imóvel (ex: Casa)">
+          <input id="filterCidade" placeholder="Cidade">
+          <input id="filterBairro" placeholder="Bairro">
+          <input id="filterPrecoMax" type="number" placeholder="Preço Máximo">
+          <label class="check-group">
+            <input id="filterDisponiveis" type="checkbox"> Apenas Disponíveis
+          </label>
+          <div>
+            <button id="applyFilters" class="secondary" type="button">Aplicar Filtros</button>
+          </div>
+        </div>
+
         <div id="imoveisList" class="list"></div>
       </section>
 
+      <!-- SEÇÃO VISITAS -->
       <section id="visitas" class="panel">
         <div class="section-head">
-          <h2>Visitas</h2>
+          <h2>Gestão de Visitas</h2>
           <span id="visitasCount" class="counter">0</span>
         </div>
-        <form id="visitaForm" class="form-grid">
+        
+        <form id="visitaForm" class="form-card form-grid">
           <select name="cliente_id" required></select>
           <select name="imovel_id" required></select>
           <input name="data_hora" type="datetime-local" required>
-          <input name="observacao" placeholder="Observacao">
-          <button class="primary" type="submit">Registrar visita</button>
+          <input name="observacao" placeholder="Observações sobre a visita" style="grid-column: 1 / -1;">
+          <div style="grid-column: 1 / -1;">
+            <button class="primary" type="submit">Agendar Visita</button>
+          </div>
         </form>
+
         <div id="visitasList" class="list"></div>
       </section>
 
+      <!-- SEÇÃO CONSULTAS -->
       <section id="consultas" class="panel">
         <div class="section-head">
-          <h2>Consultas</h2>
-          <button id="runQueries" class="primary" type="button">Executar consultas</button>
+          <h2>Consultas e Relatórios</h2>
+          <button id="runQueries" class="primary" type="button">Executar Consultas</button>
         </div>
+        <p style="color: var(--color-text-muted); margin-bottom: var(--spacing-lg);">
+          Execute as consultas avançadas para visualizar relatórios analíticos, agrupamentos e pesquisas complexas.
+        </p>
         <div id="queriesOutput" class="queries"></div>
       </section>
     </main>
 
-    <template id="itemTemplate">
-      <article class="item">
-        <div class="item-body"></div>
-        <div class="item-actions"></div>
-      </article>
-    </template>
-
-    <script src="/app.js?v=20260513-2" type="module"></script>
+    <script src="/js/main.js" type="module"></script>
   </body>
 </html>

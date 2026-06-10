@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncRoute } from '../async-route.js';
-import { collections, toObjectId } from '../db.js';
+import { collections, toId, getNextSequenceValue } from '../db.js';
 import { normalizeCliente, normalizeInteresse } from '../validation.js';
 
 export function clientesRouter(db) {
@@ -17,19 +17,20 @@ export function clientesRouter(db) {
   }));
 
   router.get('/:id', asyncRoute(async (req, res) => {
-    const cliente = await clientes.findOne({ _id: toObjectId(req.params.id) });
+    const cliente = await clientes.findOne({ _id: toId(req.params.id) });
     if (!cliente) return res.status(404).json({ error: 'Cliente nao encontrado' });
     res.json(cliente);
   }));
 
   router.post('/', asyncRoute(async (req, res) => {
     const cliente = normalizeCliente(req.body);
-    const result = await clientes.insertOne(cliente);
-    res.status(201).json({ ...cliente, _id: result.insertedId });
+    cliente._id = await getNextSequenceValue(db, 'cliente_id');
+    await clientes.insertOne(cliente);
+    res.status(201).json(cliente);
   }));
 
   router.put('/:id', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const cliente = normalizeCliente(req.body, true);
     const result = await clientes.findOneAndUpdate(
       { _id: id },
@@ -41,7 +42,7 @@ export function clientesRouter(db) {
   }));
 
   router.delete('/:id', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const [imoveisDoCliente, visitasDoCliente] = await Promise.all([
       imoveis.countDocuments({ dono_id: id }),
       visitas.countDocuments({ cliente_id: id })
@@ -59,7 +60,7 @@ export function clientesRouter(db) {
   }));
 
   router.post('/:id/interesses', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const interesse = normalizeInteresse(req.body);
     const result = await clientes.findOneAndUpdate(
       { _id: id, tipo: 'comprador' },
@@ -71,7 +72,7 @@ export function clientesRouter(db) {
   }));
 
   router.put('/:id/interesses/:index', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const index = Number(req.params.index);
     const interesse = normalizeInteresse(req.body);
     const result = await clientes.findOneAndUpdate(
@@ -84,7 +85,7 @@ export function clientesRouter(db) {
   }));
 
   router.delete('/:id/interesses/:index', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const index = Number(req.params.index);
     const cliente = await clientes.findOne({ _id: id });
     if (!cliente || !cliente.interesses?.[index]) {

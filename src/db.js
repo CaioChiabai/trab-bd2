@@ -54,13 +54,23 @@ export function collections(db) {
   };
 }
 
-export function toObjectId(value, fieldName = 'id') {
-  if (!ObjectId.isValid(value)) {
+export async function getNextSequenceValue(db, sequenceName) {
+  const sequenceDocument = await db.collection('counters').findOneAndUpdate(
+    { _id: sequenceName },
+    { $inc: { sequence_value: 1 } },
+    { returnDocument: 'after', upsert: true }
+  );
+  return sequenceDocument.sequence_value;
+}
+
+export function toId(value, fieldName = 'id') {
+  const id = Number(value);
+  if (isNaN(id) || id <= 0) {
     const error = new Error(`${fieldName} inválido`);
     error.status = 400;
     throw error;
   }
-  return new ObjectId(value);
+  return id;
 }
 
 async function createIndexes(db) {

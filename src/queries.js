@@ -7,6 +7,7 @@ export function buildImoveisFindQuery(params = {}) {
   // Utilizando regex para buscas parciais sem case sensitivity
   if (params.cidade) query['endereco.cidade'] = new RegExp(escapeRegExp(params.cidade), 'i');
   if (params.bairro) query['endereco.bairro'] = new RegExp(escapeRegExp(params.bairro), 'i');
+  if (params.uf) query['endereco.uf'] = String(params.uf).toUpperCase();
   
   // Range de Preços
   if (params.preco_min || params.preco_max) {
@@ -18,8 +19,8 @@ export function buildImoveisFindQuery(params = {}) {
   // Novo: Range de Datas (Construção)
   if (params.data_inicio || params.data_fim) {
     query.data_construcao = {};
-    if (params.data_inicio) query.data_construcao.$gte = params.data_inicio;
-    if (params.data_fim) query.data_construcao.$lte = params.data_fim;
+    if (params.data_inicio) query.data_construcao.$gte = new Date(params.data_inicio);
+    if (params.data_fim) query.data_construcao.$lte = new Date(params.data_fim);
   }
 
   return query;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncRoute } from '../async-route.js';
-import { collections, toObjectId } from '../db.js';
+import { collections, toId, getNextSequenceValue } from '../db.js';
 import { buildImoveisFindQuery } from '../queries.js';
 import { normalizeImovel } from '../validation.js';
 
@@ -14,25 +14,26 @@ export function imoveisRouter(db) {
   }));
 
   router.get('/:id', asyncRoute(async (req, res) => {
-    const imovel = await imoveis.findOne({ _id: toObjectId(req.params.id) });
+    const imovel = await imoveis.findOne({ _id: toId(req.params.id) });
     if (!imovel) return res.status(404).json({ error: 'Imovel nao encontrado' });
     res.json(imovel);
   }));
 
   router.post('/', asyncRoute(async (req, res) => {
     const imovel = normalizeImovel(req.body);
-    imovel.dono_id = toObjectId(imovel.dono_id, 'dono_id');
+    imovel.dono_id = toId(imovel.dono_id, 'dono_id');
     await assertVendedorExists(clientes, imovel.dono_id);
 
-    const result = await imoveis.insertOne(imovel);
-    res.status(201).json({ ...imovel, _id: result.insertedId });
+    imovel._id = await getNextSequenceValue(db, 'imovel_id');
+    await imoveis.insertOne(imovel);
+    res.status(201).json(imovel);
   }));
 
   router.put('/:id', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const imovel = normalizeImovel(req.body, true);
     if (imovel.dono_id) {
-      imovel.dono_id = toObjectId(imovel.dono_id, 'dono_id');
+      imovel.dono_id = toId(imovel.dono_id, 'dono_id');
       await assertVendedorExists(clientes, imovel.dono_id);
     }
 
@@ -46,7 +47,7 @@ export function imoveisRouter(db) {
   }));
 
   router.delete('/:id', asyncRoute(async (req, res) => {
-    const id = toObjectId(req.params.id);
+    const id = toId(req.params.id);
     const totalVisitas = await visitas.countDocuments({ imovel_id: id });
     if (totalVisitas > 0) {
       return res.status(409).json({ error: 'Imovel possui visitas vinculadas e nao pode ser excluido' });

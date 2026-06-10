@@ -1,3 +1,5 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import { connectDB } from './db.js';
@@ -13,6 +15,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.get('/constants.js', (req, res) => { res.sendFile(path.join(__dirname, 'shared', 'constants.js')); });
+
 const db = await connectDB();
 
 app.get('/api/health', (_req, res) => {
@@ -25,6 +30,14 @@ app.use('/api/visitas', visitasRouter(db));
 app.use('/api/consultas', consultasRouter(db));
 
 app.use((err, _req, res, _next) => {
+  if (err.name === 'ZodError') {
+    return res.status(400).json({
+      error: true,
+      message: 'Erro de validação',
+      details: err.errors
+    });
+  }
+
   if (err.code === 11000) {
     const duplicatedField = Object.keys(err.keyValue || {})[0];
     const duplicatedValue = err.keyValue?.[duplicatedField];
@@ -32,11 +45,11 @@ app.use((err, _req, res, _next) => {
       ? `Ja existe um registro com ${duplicatedField}: ${duplicatedValue}`
       : 'Registro duplicado';
 
-    return res.status(409).json({ error: message, details: err.keyValue });
+    return res.status(409).json({ error: true, message, details: err.keyValue });
   }
 
   const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Erro interno' });
+  res.status(status).json({ error: true, message: err.message || 'Erro interno' });
 });
 
 app.listen(port, () => {
