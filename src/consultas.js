@@ -11,8 +11,8 @@ const consultas = [
     () => imoveis.find({ tipo: 'apartamento', 'endereco.cidade': 'Belo Horizonte', preco: { $lte: 550000 } }).toArray()
   ],
   [
-    'find: compradores com interesses',
-    () => clientes.find({ tipo: 'comprador', interesses: { $exists: true, $ne: [] } }).sort({ nome: 1 }).toArray()
+  'find: compradores com interesses',
+  () => clientes.aggregate(pipelines.compradoresComInteresses).toArray()
   ],
   ['aggregate: imoveis por tipo', () => imoveis.aggregate(pipelines.imoveisPorTipo).toArray()],
   ['aggregate: preco medio por localidade', () => imoveis.aggregate(pipelines.precoMedioPorLocalidade).toArray()],

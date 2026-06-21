@@ -57,9 +57,9 @@ export function consultasRouter(db) {
 }));
 
   router.get('/find/compradores-com-interesses', asyncRoute(async (_req, res) => {
-    const data = await clientes.find({ tipo: 'comprador', interesses: { $exists: true, $ne: [] } }).sort({ nome: 1 }).toArray();
-    res.json(data);
-  }));
+  const data = await clientes.aggregate(pipelines.compradoresComInteresses).toArray();
+  res.json(data);
+}));
 
   router.get('/aggregate/imoveis-por-tipo', asyncRoute(async (_req, res) => {
     res.json(await imoveis.aggregate(pipelines.imoveisPorTipo).toArray());

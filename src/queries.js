@@ -3,12 +3,12 @@ export function buildImoveisFindQuery(params = {}) {
 
   if (params.disponiveis === 'true') query.ocupado = false;
   if (params.tipo) query.tipo = String(params.tipo).toLowerCase();
-  
+
   // Utilizando regex para buscas parciais sem case sensitivity
   if (params.cidade) query['endereco.cidade'] = new RegExp(escapeRegExp(params.cidade), 'i');
   if (params.bairro) query['endereco.bairro'] = new RegExp(escapeRegExp(params.bairro), 'i');
   if (params.uf) query['endereco.uf'] = String(params.uf).toUpperCase();
-  
+
   // Range de Preços
   if (params.preco_min || params.preco_max) {
     query.preco = {};
@@ -30,7 +30,37 @@ export function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Monta uma string legível a partir do objeto endereco, evitando que
+// campos ausentes quebrem o $concat (que retorna null se algum operando for null)
+function enderecoConcatExpr(prefixoCampo) {
+  return {
+    $concat: [
+      { $ifNull: [`$${prefixoCampo}.bairro`, ''] },
+      ', ',
+      { $ifNull: [`$${prefixoCampo}.cidade`, ''] },
+      ' - ',
+      { $ifNull: [`$${prefixoCampo}.uf`, ''] }
+    ]
+  };
+}
+
 export const pipelines = {
+  compradoresComInteresses: [
+    { $match: { tipo: 'comprador', interesses: { $exists: true, $ne: [] } } },
+    {
+      // Em vez de listar o conteúdo de "interesses" (array de objetos),
+      // mostramos apenas a quantidade de itens com $size
+      $project: {
+        nome: 1,
+        endereco: 1,
+        telefone: 1,
+        email: 1,
+        tipo: 1,
+        numero_interesses: { $size: '$interesses' }
+      }
+    },
+    { $sort: { nome: 1 } }
+  ],
   imoveisPorTipo: [
     { $group: { _id: '$tipo', quantidade: { $sum: 1 } } },
     { $sort: { quantidade: -1, _id: 1 } }
@@ -64,7 +94,8 @@ export const pipelines = {
     {
       $project: {
         tipo: 1,
-        endereco: 1,
+        // Antes: endereco: 1 (objeto inteiro -> aparecia como [object Object] na tabela)
+        endereco: enderecoConcatExpr('endereco'),
         preco: 1,
         ocupado: 1,
         data_construcao: 1,
@@ -110,7 +141,8 @@ export const pipelines = {
         imovel: {
           _id: '$imovel._id',
           tipo: '$imovel.tipo',
-          endereco: '$imovel.endereco',
+          // Antes: endereco: '$imovel.endereco' (objeto inteiro)
+          endereco: enderecoConcatExpr('imovel.endereco'),
           preco: '$imovel.preco'
         }
       }
@@ -147,7 +179,8 @@ export const pipelines = {
         imovel: {
           _id: '$imovel._id',
           tipo: '$imovel.tipo',
-          endereco: '$imovel.endereco',
+          // Antes: endereco: '$imovel.endereco' (objeto inteiro)
+          endereco: enderecoConcatExpr('imovel.endereco'),
           preco: '$imovel.preco'
         }
       }
